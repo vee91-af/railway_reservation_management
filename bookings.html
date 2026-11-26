@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Bookings — RailEase</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="/"><span>🚆</span><span>RailEase</span></a>
+    <div class="nav-links">
+      <a class="nav-link" href="/">Home</a>
+      <a class="nav-link active" href="/bookings">My Bookings</a>
+    </div>
+    <div class="nav-user">
+      <span id="user-pill" class="user-pill">Loading...</span>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero-banner" style="padding: 1.5rem 2rem;">
+      <h1>My Bookings</h1>
+      <p style="margin-bottom: 0;">View your confirmed and cancelled tickets, check PNR details, or cancel a trip.</p>
+    </section>
+
+    <div class="section-header">
+      <h2>Ticket History</h2>
+      <span id="booking-count" class="count-pill">0 bookings</span>
+    </div>
+
+    <div id="feedback"></div>
+    <div id="bookings-list"></div>
+  </main>
+
+  <script>
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    async function init() {
+      const res = await fetch("/api/me");
+      const data = await res.json();
+      if (!data.user) {
+        window.location.href = "/login";
+        return;
+      }
+      document.getElementById("user-pill").textContent = `${data.user.full_name} (@${data.user.username})`;
+      loadBookings();
+    }
+
+    async function logout() {
+      await fetch("/api/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+
+    async function loadBookings() {
+      const res = await fetch("/api/bookings");
+      if (!res.ok) return;
+      const data = await res.json();
+      const bookings = data.bookings || [];
+
+      document.getElementById("booking-count").textContent = `${bookings.length} booking${bookings.length === 1 ? "" : "s"}`;
+      const container = document.getElementById("bookings-list");
+
+      if (bookings.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p style="margin-bottom: 1rem;">You haven't booked any tickets yet.</p>
+            <a class="btn btn-primary" href="/" style="color: #fff; text-decoration: none;">Browse Available Trains</a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = bookings.map(b => `
+        <div class="booking-card">
+          <div>
+            <div class="pnr-code">${escapeHtml(b.pnr)}</div>
+            <div style="font-weight: 700; margin-top: 0.25rem;">${escapeHtml(b.train_number)} ${escapeHtml(b.train_name)}</div>
+            <div style="font-size: 0.84rem; color: var(--muted);">Passenger: ${escapeHtml(b.passenger_name)}</div>
+          </div>
+
+          <div class="route-box">
+            <div class="station">
+              <div class="time">${escapeHtml(b.departure_time)}</div>
+              <div class="city">${escapeHtml(b.source)}</div>
+            </div>
+            <div class="route-line"></div>
+            <div class="station">
+              <div class="time">${escapeHtml(b.arrival_time)}</div>
+              <div class="city">${escapeHtml(b.destination)}</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="fare-tag">₹${b.total_fare.toFixed(2)}</div>
+            <div class="seats-text">${b.seats_booked} seat(s)</div>
+            <div style="margin-top: 0.35rem;">
+              <span class="badge ${b.status.toLowerCase()}">${escapeHtml(b.status)}</span>
+            </div>
+          </div>
+
+          <div>
+            ${b.status === "CONFIRMED"
+              ? `<button class="btn btn-danger" onclick="cancelBooking('${escapeHtml(b.pnr)}')">Cancel Ticket</button>`
+              : `<span style="color: var(--muted); font-size: 0.85rem;">No actions</span>`}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function cancelBooking(pnr) {
+      const fb = document.getElementById("feedback");
+      const res = await fetch("/api/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pnr })
+      });
+      const data = await res.json();
+      fb.className = "alert " + (data.ok ? "ok" : "err");
+      fb.style.marginBottom = "1rem";
+      fb.textContent = data.message || "Unable to cancel booking.";
+      if (data.ok) loadBookings();
+    }
+
+    init();
+  </script>
+</body>
+</html>
