@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — RailEase</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <section class="auth-hero">
+      <div>
+        <div class="brand" style="font-size: 1.4rem; margin-bottom: 2.5rem;">
+          <span>🚆</span>
+          <span>RailEase</span>
+        </div>
+        <h1>Create your passenger account.</h1>
+        <p>Join RailEase to search routes, book confirmed tickets, and keep track of your travel history effortlessly.</p>
+        <ul class="feature-list">
+          <li><span class="feature-dot">✓</span> Fast &amp; secure account registration</li>
+          <li><span class="feature-dot">✓</span> Dedicated My Bookings dashboard</li>
+          <li><span class="feature-dot">✓</span> Real-time seat count updates</li>
+        </ul>
+      </div>
+      <div style="font-size: 0.85rem; color: rgba(255,255,255,0.65);">
+        Railway Management System
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <h2>Create Account</h2>
+        <p class="auth-subtitle">Fill in your details to get started.</p>
+
+        <form onsubmit="handleRegister(event)">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" placeholder="e.g. vaishnavi" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="full_name">Full Name</label>
+            <input id="full_name" placeholder="e.g. Vaishnavi Sharma" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="password">Password (min 4 characters)</label>
+            <input id="password" type="password" minlength="4" placeholder="Choose a password" required autocomplete="new-password" />
+          </div>
+          <button class="btn btn-primary btn-full" type="submit">Register</button>
+        </form>
+
+        <div id="msg"></div>
+
+        <div class="auth-footer">
+          Already have an account? <a href="/login">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    async function handleRegister(e) {
+      e.preventDefault();
+      const msgEl = document.getElementById("msg");
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: document.getElementById("username").value,
+          full_name: document.getElementById("full_name").value,
+          password: document.getElementById("password").value
+        })
+      });
+      const data = await res.json();
+      msgEl.className = "alert " + (data.ok ? "ok" : "err");
+      msgEl.textContent = data.message;
+      if (data.ok) {
+        setTimeout(() => { window.location.href = "/login"; }, 1100);
+      }
+    }
+  </script>
+</body>
+</html>
