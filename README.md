@@ -1,36 +1,21 @@
-# Railway Reservation System
+# Railway Management System (Python)
 
-A lightweight, full-stack Railway Reservation Management System prototype built with Node.js, Express, and a responsive frontend styled with Tailwind CSS. This application allows users to search available trains across routes, view seat quotas, select travel classes, and confirm bookings with instant PNR generation.
-
----
+A command-line Railway Management System built with Python's standard library (`sqlite3`, `hashlib`, `secrets`, `unittest`).
 
 ## Features
+- **User Authentication**: Register a new account and log in with salted PBKDF2-SHA256 password hashing.
+- **Train Availability**: View all trains or filter by source and destination stations.
+- **Ticket Booking**: Book seats on any available train with automatic PNR generation and seat count updates.
+- **My Bookings & Cancellation**: View your booking history and cancel confirmed tickets (automatically restoring seats).
 
-- **Train Search Engine:** Query routes between origin and destination stations.
-- **Seat & Class Availability:** Interactive quota selection across multiple classes (1A, 2A, 3A, Sleeper, Chair Car) with live pricing.
-- **Instant Reservation & PNR:** Generates unique PNRs, automatically allocates coach/seat numbers, and renders an instant booking confirmation.
-- **Responsive Interface:** Modern, clean UI built using Tailwind CSS.
-- **RESTful Endpoints:** Modular API layer built on Express for querying inventory and managing bookings.
+## How to Run
 
----
-
-## Tech Stack
-
-- **Backend:** Node.js, Express.js
-- **Frontend:** HTML5, Vanilla JavaScript, Tailwind CSS (via CDN)
-- **Data Handling:** In-memory state and mock data
-
----
-
-## Project Structure
-
-```text
-railway-reservation/
-├── public/
-│   ├── index.html       # Application UI & layout
-│   └── app.js           # Client-side API handling & DOM manipulation
-├── .gitignore           # Git ignore rules (excludes node_modules)
-├── package.json         # Project metadata and dependencies
-├── package-lock.json    # Dependency lockfile
-├── README.md            # Project documentation
-└── server.js            # Express server & mock API endpoints
+1. Make sure Python 3.10+ is installed and available on your `PATH`.
+2. Start the application:
+   ```bash
+   python main.py
+   ```
+3. Run the unit tests:
+   ```bash
+   python -m unittest discover -s tests
+   ```
