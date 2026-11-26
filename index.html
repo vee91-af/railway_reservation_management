@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home — RailEase</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="/"><span>🚆</span><span>RailEase</span></a>
+    <div class="nav-links">
+      <a class="nav-link active" href="/">Home</a>
+      <a class="nav-link" href="/bookings">My Bookings</a>
+    </div>
+    <div class="nav-user">
+      <span id="user-pill" class="user-pill">Loading...</span>
+      <button class="btn btn-ghost" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero-banner">
+      <h1>Find &amp; Book Trains</h1>
+      <p>Search available trains by source and destination, check live seat counts, and book instantly.</p>
+
+      <div class="search-bar">
+        <div class="field">
+          <label for="filter-source">From (Source)</label>
+          <input id="filter-source" placeholder="e.g. Mumbai" />
+        </div>
+        <div class="field">
+          <label for="filter-dest">To (Destination)</label>
+          <input id="filter-dest" placeholder="e.g. New Delhi" />
+        </div>
+        <button class="btn btn-primary" onclick="loadTrains()">Search Trains</button>
+        <button class="btn btn-secondary" onclick="clearFilters()">Show All</button>
+      </div>
+
+      <div class="chips">
+        <span class="chips-label">Popular routes:</span>
+        <button class="chip" onclick="quickFilter('Mumbai', 'New Delhi')">Mumbai → New Delhi</button>
+        <button class="chip" onclick="quickFilter('New Delhi', 'Bhopal')">New Delhi → Bhopal</button>
+        <button class="chip" onclick="quickFilter('Bengaluru', 'New Delhi')">Bengaluru → New Delhi</button>
+        <button class="chip" onclick="quickFilter('Chennai', 'Kolkata')">Chennai → Kolkata</button>
+      </div>
+    </section>
+
+    <div class="section-header">
+      <h2>Available Trains</h2>
+      <span id="train-count" class="count-pill">0 trains</span>
+    </div>
+
+    <div id="trains-list" class="trains-grid"></div>
+  </main>
+
+  <!-- Booking Modal -->
+  <div id="book-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Book Ticket</h2>
+        <button class="btn btn-secondary" onclick="closeModal()">✕</button>
+      </div>
+      <form onsubmit="handleBook(event)">
+        <div class="field">
+          <label>Train</label>
+          <input id="book-train-display" readonly />
+          <input id="book-train-no" type="hidden" />
+        </div>
+        <div class="field">
+          <label for="book-passenger">Passenger Name</label>
+          <input id="book-passenger" required />
+        </div>
+        <div class="field">
+          <label for="book-seats">Number of Seats</label>
+          <input id="book-seats" type="number" min="1" value="1" required oninput="updateTotal()" />
+        </div>
+        <div class="fare-summary">
+          <span>Total Fare</span>
+          <span id="total-fare" style="font-size: 1.15rem; color: var(--primary);">₹0.00</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-accent">Confirm Booking</button>
+        </div>
+      </form>
+      <div id="book-msg"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let selectedFare = 0;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    async function init() {
+      const res = await fetch("/api/me");
+      const data = await res.json();
+      if (!data.user) {
+        window.location.href = "/login";
+        return;
+      }
+      currentUser = data.user;
+      document.getElementById("user-pill").textContent = `${currentUser.full_name} (@${currentUser.username})`;
+      loadTrains();
+    }
+
+    async function logout() {
+      await fetch("/api/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+
+    function quickFilter(src, dst) {
+      document.getElementById("filter-source").value = src;
+      document.getElementById("filter-dest").value = dst;
+      loadTrains();
+    }
+
+    function clearFilters() {
+      document.getElementById("filter-source").value = "";
+      document.getElementById("filter-dest").value = "";
+      loadTrains();
+    }
+
+    async function loadTrains() {
+      const src = encodeURIComponent(document.getElementById("filter-source").value);
+      const dst = encodeURIComponent(document.getElementById("filter-dest").value);
+      const res = await fetch(`/api/trains?source=${src}&destination=${dst}`);
+      const data = await res.json();
+      const trains = data.trains || [];
+
+      document.getElementById("train-count").textContent = `${trains.length} train${trains.length === 1 ? "" : "s"}`;
+      const container = document.getElementById("trains-list");
+
+      if (trains.length === 0) {
+        container.innerHTML = `<div class="empty-state">No trains found matching your search. Try resetting the filters.</div>`;
+        return;
+      }
+
+      container.innerHTML = trains.map(t => {
+        const pct = Math.round((t.available_seats / t.total_seats) * 100);
+        const barClass = t.available_seats === 0 ? "empty" : pct < 25 ? "low" : "";
+        return `
+          <div class="train-card">
+            <div>
+              <span class="train-no">#${escapeHtml(t.train_number)}</span>
+              <div class="train-name">${escapeHtml(t.name)}</div>
+            </div>
+            <div class="route-box">
+              <div class="station">
+                <div class="time">${escapeHtml(t.departure_time)}</div>
+                <div class="city">${escapeHtml(t.source)}</div>
+              </div>
+              <div class="route-line"></div>
+              <div class="station">
+                <div class="time">${escapeHtml(t.arrival_time)}</div>
+                <div class="city">${escapeHtml(t.destination)}</div>
+              </div>
+            </div>
+            <div>
+              <div class="fare-tag">₹${t.fare.toFixed(2)}</div>
+              <div class="seats-text">${t.available_seats} of ${t.total_seats} seats left</div>
+              <div class="seats-bar-wrap">
+                <div class="seats-bar ${barClass}" style="width: ${pct}%"></div>
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-primary"
+                onclick="openModal('${escapeHtml(t.train_number)}', '${escapeHtml(t.name)}', ${t.fare}, ${t.available_seats})"
+                ${t.available_seats === 0 ? "disabled" : ""}>
+                ${t.available_seats === 0 ? "Sold Out" : "Book Ticket"}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openModal(trainNo, trainName, fare, maxSeats) {
+      selectedFare = fare;
+      document.getElementById("book-train-no").value = trainNo;
+      document.getElementById("book-train-display").value = `${trainNo} — ${trainName}`;
+      document.getElementById("book-passenger").value = currentUser.full_name;
+      const seatsInput = document.getElementById("book-seats");
+      seatsInput.value = 1;
+      seatsInput.max = maxSeats;
+      document.getElementById("book-msg").className = "";
+      document.getElementById("book-msg").textContent = "";
+      updateTotal();
+      document.getElementById("book-modal").classList.add("open");
+    }
+
+    function closeModal() {
+      document.getElementById("book-modal").classList.remove("open");
+    }
+
+    function updateTotal() {
+      const seats = Math.max(1, parseInt(document.getElementById("book-seats").value || "1", 10));
+      document.getElementById("total-fare").textContent = `₹${(selectedFare * seats).toFixed(2)}`;
+    }
+
+    async function handleBook(e) {
+      e.preventDefault();
+      const msgEl = document.getElementById("book-msg");
+      const res = await fetch("/api/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          train_number: document.getElementById("book-train-no").value,
+          passenger_name: document.getElementById("book-passenger").value,
+          seats: parseInt(document.getElementById("book-seats").value, 10)
+        })
+      });
+      const data = await res.json();
+      msgEl.className = "alert " + (data.ok ? "ok" : "err");
+      if (data.ok) {
+        msgEl.innerHTML = `${escapeHtml(data.message)} <a href="/bookings" style="margin-left: 0.4rem;">View My Bookings →</a>`;
+        loadTrains();
+      } else {
+        msgEl.textContent = data.message;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

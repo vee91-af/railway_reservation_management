@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — RailEase</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="auth-wrapper">
+    <section class="auth-hero">
+      <div>
+        <div class="brand" style="font-size: 1.4rem; margin-bottom: 2.5rem;">
+          <span>🚆</span>
+          <span>RailEase</span>
+        </div>
+        <h1>Book your train journey in seconds.</h1>
+        <p>Check live seat availability, reserve tickets with instant PNR generation, and manage all your trips from one place.</p>
+        <ul class="feature-list">
+          <li><span class="feature-dot">1</span> Live seat availability across major routes</li>
+          <li><span class="feature-dot">2</span> Instant PNR ticket confirmation</li>
+          <li><span class="feature-dot">3</span> One-click cancellation &amp; seat restoration</li>
+        </ul>
+      </div>
+      <div style="font-size: 0.85rem; color: rgba(255,255,255,0.65);">
+        Railway Management System
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <h2>Welcome back</h2>
+        <p class="auth-subtitle">Sign in to view trains and book tickets.</p>
+
+        <form onsubmit="handleLogin(event)">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" placeholder="Enter your username" required autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" placeholder="Enter your password" required autocomplete="current-password" />
+          </div>
+          <button class="btn btn-primary btn-full" type="submit">Sign In</button>
+        </form>
+
+        <div id="msg"></div>
+
+        <div class="auth-footer">
+          Don't have an account? <a href="/register">Create one</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    async function handleLogin(e) {
+      e.preventDefault();
+      const msgEl = document.getElementById("msg");
+      msgEl.className = "";
+      msgEl.textContent = "";
+
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: document.getElementById("username").value,
+          password: document.getElementById("password").value
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = "/";
+      } else {
+        msgEl.className = "alert err";
+        msgEl.textContent = data.message || "Login failed.";
+      }
+    }
+  </script>
+</body>
+</html>
